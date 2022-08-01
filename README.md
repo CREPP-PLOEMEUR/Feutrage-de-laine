@@ -2,27 +2,29 @@
 
 Un projet pour une machine à feutrer la laine
 
-## Installations
+## Installations Outils Python 2.7
 
 ```
-sudo apt-get install pyqt5-dev-tools
-sudo apt-get install python3-pyqt5
-sudo apt-get install python3-pyqt5.qtserialport
+sudo apt install python-pip
+sudo apt-get install python-qt4
+sudo apt-get install pyqt4-dev-tools 
+pip install serial
+sudo apt-get install qt4-designer
 ```
 
 ## Conversion de l'interface UI en code Python
 
 Cette commande est à réaliser à chaque modification de l'interface graphique.
 ```
-pyuic5 -x FeutrageGUI.ui -o FeutrageGUI.py
+pyuic4 -x GUI.ui -o GUI.py
 ```
 
 
-Le dossier FeutrageGUI contient le code source pour l'Interface PyQt5
+Le dossier GUI contient le code source pour l'Interface PyQt4
 
 
 ## Lancement de l'interface
 
 ```
-python3 FeutrageGUIMain.py
+python GUIMain.py
 ```

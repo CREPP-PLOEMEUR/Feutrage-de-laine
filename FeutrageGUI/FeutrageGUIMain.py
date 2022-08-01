@@ -3,10 +3,9 @@
 
 # Feutrage Laine
 # GPLv3
-
 #Importation des modules
-from PyQt5 import QtWidgets
 
+from PyQt5 import QtWidgets
 from PyQt5.QtCore import * 
 from PyQt5.QtGui import * 
 from PyQt5.QtWidgets import * 
@@ -16,11 +15,10 @@ from PyQt5.QtCore import QTimer,QDateTime
 from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 
 import os,sys
-import serial # communication serie
 import time
 from math import floor
 
-from FeutrageGUI import *
+from FeutrageGUI import *  #Fenetre générée par pyuic5
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -44,8 +42,9 @@ class MainWindow(QtWidgets.QMainWindow):
 		self.ui.pb_closePort.clicked.connect(self.closePort)
 		self.ui.pb_generateGCode.clicked.connect(self.generateGCode)
 		self.ui.pb_start.clicked.connect(self.start)
+		self.ui.pb_clear.clicked.connect(self.clear)
 
-
+		#Affiche les ports disponibles
 		for port in QSerialPortInfo.availablePorts():
 			self.ui.cb_ports.addItem("/dev/"+port.portName())
 
@@ -64,12 +63,12 @@ class MainWindow(QtWidgets.QMainWindow):
 		#self.successCommand = False
 		result=""
 		waitingOK = True
-		while (waitingOK==True): # tant que au moins un caractère en réception
-			char=self.serial.read(10).decode("utf-8") # on lit le caractère
+		while (waitingOK==True): 
+			char=self.serial.read(10).decode("utf-8") 
 
-			if(char=='\n'): # si saut de ligne, on sort du while
+			if(char=='\n'): 
 				result=""
-			else: #tant que c'est pas le saut de ligne, on l'ajoute à la chaine 
+			else: 
 				result=result+char	
 				if(result=="<ok>\n"):
 					print("Commande : OK")
@@ -90,6 +89,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
 		if(result):
 			self.statusBar().showMessage("Le port '"+self.port+"' est ouvert ("+str(self.baudrate)+")")
+			self.ui.pb_generateGCode.setEnabled(True)
+			self.ui.lbl_status.setText("GCode non généré")
 		else:
 			self.statusBar().showMessage("Impossible d'ouvrir le port '"+str(self.port)+"'" )
 
@@ -97,6 +98,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 		self.serial.close()
 		self.statusBar().showMessage("")
+		self.ui.pb_generateGCode.setEnabled(False)
 		
 	def readData(self):
 		data = self.serial.read(20).decode("utf-8")
@@ -138,16 +140,34 @@ class MainWindow(QtWidgets.QMainWindow):
 
 		self.strGCode = gcode
 		self.ui.pte_displayGCode.appendPlainText(self.strGCode)
+		self.ui.lbl_status.setText("GCode généré")
+		self.ui.pb_start.setEnabled(True)
 
 	def start(self):
 
-		print("Mode relatif")
-		self.sendCommand("G91") #Mode relatif
-		#Retour Home
-		print("Retour origine")
-		self.sendCommand("G28 X")
-		self.sendCommand("G28 Y")
+		self.allCommands = self.strGCode.split("\n")
+		self.ui.lbl_status.setText("En cours")
 
+		for line in range (0,len(self.allCommands)):
+			#print(self.allCommands[line])
+			time.sleep(0.01)
+			self.ui.pb_progressBar.setValue(int(line/len(self.allCommands)*100))
+			self.ui.pte_gcodeReturn.appendPlainText(">>> "+self.allCommands[line])
+			time.sleep(0.005)
+			self.ui.pte_gcodeReturn.appendPlainText(">>> OK")
+
+		self.ui.pb_progressBar.setValue(100)
+		self.ui.lbl_status.setText("Terminé")
+		# print("Mode relatif")
+		# self.sendCommand("G91") #Mode relatif
+		# #Retour Home
+		# print("Retour origine")
+		# self.sendCommand("G28 X")
+		# self.sendCommand("G28 Y")
+
+	def clear(self):
+
+		self.ui.pte_gcodeReturn.clear()
 
 def main():
 	

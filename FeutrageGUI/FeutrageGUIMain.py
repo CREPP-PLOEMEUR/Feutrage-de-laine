@@ -18,7 +18,7 @@ import os,sys
 import time
 from math import floor
 
-from FeutrageGUI import *  #Fenetre générée par pyuic5
+from FeutrageGUI import *  #Fenêtre générée par pyuic5
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -54,25 +54,24 @@ class MainWindow(QtWidgets.QMainWindow):
 
 	def sendCommand(self, command):
 
-		while(self.successCommand==False):
-			print("Attente d'une réponse de la commande précédente")
-			time.sleep(0.05)
+		# while(self.successCommand==False):
+		# 	print("Attente d'une réponse de la commande précédente")
+		# 	time.sleep(0.05)
 				
-		print("Envoi de la commande")
-		self.serial.write(bytes(command+'\n', encoding='utf8'))
-		#self.successCommand = False
-		result=""
-		waitingOK = True
-		while (waitingOK==True): 
-			char=self.serial.read(10).decode("utf-8") 
+		print(">>> Envoi de la commande '" +command+"'")
+		self.serial.write(str.encode(command+"\n"))
 
-			if(char=='\n'): 
-				result=""
-			else: 
-				result=result+char	
-				if(result=="<ok>\n"):
-					print("Commande : OK")
-					waitingOK = False
+		# data = self.serial.readLine(100)
+		# while(not bytes("ok", "utf-8") in data):
+		# 	data = self.serial.readLine(100)
+		# 	time.sleep(0.01)
+		# print(data)
+		# print(len(data))
+		# sortedData = data[-40:]
+		# if(">>>" in sortedData):
+		# 	print("OK")
+		# 	self.successCommand = True
+		#self.successCommand = False
 
 	def refreshPort(self):
 
@@ -84,7 +83,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 		print("Initialisation du port série")
 
-		self.serial = QSerialPort(self.ui.cb_ports.currentText(),baudRate=self.baudrate)#, readyRead=self.callbackReading)
+		self.serial = QSerialPort(self.ui.cb_ports.currentText(),baudRate=self.baudrate, readyRead=self.callbackReading)
 		result = self.serial.open(QIODevice.ReadWrite) #Tentative de connexion
 
 		if(result):
@@ -101,8 +100,12 @@ class MainWindow(QtWidgets.QMainWindow):
 		self.ui.pb_generateGCode.setEnabled(False)
 		
 	def readData(self):
-		data = self.serial.read(20).decode("utf-8")
-		if(data=="<ok>\n"):
+		print("READ CALLBACk")
+		data = self.serial.read(100).decode("utf-8")
+		print(data)
+		print(len(data))
+		sortedData = data[-40:]
+		if(">>>" in sortedData):
 			print("OK")
 			self.successCommand = True
 
@@ -147,17 +150,36 @@ class MainWindow(QtWidgets.QMainWindow):
 
 		self.allCommands = self.strGCode.split("\n")
 		self.ui.lbl_status.setText("En cours")
+		self.sendCommand("G91")
+		self.sendCommand("G28 X")
+		#self.serial.write(bytes("G91"+'\n'+"G28 X", encoding='utf-8'))
+		time.sleep(1)
 
-		for line in range (0,len(self.allCommands)):
-			#print(self.allCommands[line])
-			time.sleep(0.01)
-			self.ui.pb_progressBar.setValue(int(line/len(self.allCommands)*100))
-			self.ui.pte_gcodeReturn.appendPlainText(">>> "+self.allCommands[line])
-			time.sleep(0.005)
-			self.ui.pte_gcodeReturn.appendPlainText(">>> OK")
+		#self.sendCommand("G28 X")
+		#self.serial.write(bytes("G91"+'\n', encoding='utf-8'))
+		#self.sendCommand("G28 Y")
 
-		self.ui.pb_progressBar.setValue(100)
-		self.ui.lbl_status.setText("Terminé")
+		# for line in range (0,len(self.allCommands)):
+		# 	#print(self.allCommands[line])
+		# 	print(line)
+		# 	while(self.successCommand==False):
+		# 		continue
+		# 		print("waiting")
+		# 	#print("OK command")
+		# 	#time.sleep(2)
+		# 	#print("OK command")
+		# 	self.sendCommand(self.allCommands[line])
+
+			# time.sleep(0.01)
+			# self.ui.pb_progressBar.setValue(int(line/len(self.allCommands)*100))
+			# self.ui.pte_gcodeReturn.appendPlainText(">>> "+self.allCommands[line])
+			# time.sleep(0.005)
+			# self.ui.pte_gcodeReturn.appendPlainText(">>> OK")
+
+
+
+		# self.ui.pb_progressBar.setValue(100)
+		# self.ui.lbl_status.setText("Terminé")
 		# print("Mode relatif")
 		# self.sendCommand("G91") #Mode relatif
 		# #Retour Home

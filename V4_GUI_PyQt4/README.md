@@ -20,7 +20,7 @@ pyuic4 -x GUI.ui -o GUI.py
 ```
 
 
-Le dossier V4_GUI_PyQt4 contient le code source pour l'Interface PyQt4
+Le dossier GUI contient le code source pour l'Interface PyQt4
 
 
 ## Lancement de l'interface

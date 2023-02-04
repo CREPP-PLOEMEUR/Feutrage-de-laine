@@ -1,10 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-#Feutrage de laine
-#V1 : Nicolas Le Guerroué
-#nicolasleguerroue@gmail.com
-
 import threading
 import time
 

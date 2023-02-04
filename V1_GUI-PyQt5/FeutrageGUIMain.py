@@ -10,10 +10,13 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import * 
 from PyQt5.QtWidgets import * 
 
+import serial 	#Liaison série
+
 from PyQt5.QtCore import QIODevice
 from PyQt5.QtCore import QTimer,QDateTime
 from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 
+from ReadingData import ReadingData
 import os,sys
 import time
 from math import floor
@@ -29,13 +32,13 @@ class MainWindow(QtWidgets.QMainWindow):
 		self.ui.setupUi(self)
 
 		#fonction de lecture
-		self.callbackReading = self.readData	
+		#self.callbackReading = self.readData	
 		self.port = "/dev/ttyACM0"
 		self.baudrate = 115200
 
 		self.strGCode = ""
 
-
+		self.readingThread = ReadingData(1, "ReadingData Thread")
 		#Signaux et slots
 		self.ui.pb_resfreshPorts.clicked.connect(self.refreshPort)
 		self.ui.pb_openPort.clicked.connect(self.openPort)
@@ -79,113 +82,104 @@ class MainWindow(QtWidgets.QMainWindow):
 		for port in QSerialPortInfo.availablePorts():
 			self.ui.cb_ports.addItem("/dev/"+port.portName())
 
-	def openPort(self): #Initialisation du port Série
+	def openPort(self): 
+		"""Initialisation du port Série"""
 
 		print("Initialisation du port série")
-
-		self.serial = QSerialPort(self.ui.cb_ports.currentText(),baudRate=self.baudrate, readyRead=self.callbackReading)
-		result = self.serial.open(QIODevice.ReadWrite) #Tentative de connexion
-
-		if(result):
-			self.statusBar().showMessage("Le port '"+self.port+"' est ouvert ("+str(self.baudrate)+")")
-			self.ui.pb_generateGCode.setEnabled(True)
-			self.ui.lbl_status.setText("GCode non généré")
-		else:
-			self.statusBar().showMessage("Impossible d'ouvrir le port '"+str(self.port)+"'" )
+		self.serial = serial.Serial(str(self.ui.cb_ports.currentText()), self.baudrate,serial.EIGHTBITS, serial.PARITY_NONE, serial.STOPBITS_ONE, timeout=0.1)
+		self.ui.lbl_status.setText("Connecte")
+		self.ui.pb_start.setEnabled(True)
 
 	def closePort(self): #Initialisation du port Série
+		"""Fermeture du port série"""
 
 		self.serial.close()
-		self.statusBar().showMessage("")
-		self.ui.pb_generateGCode.setEnabled(False)
+		print("Deconnnexion")
+		self.statusBar().showMessage("Deconnecte")
 		
-	def readData(self):
-		print("READ CALLBACk")
-		data = self.serial.read(100).decode("utf-8")
-		print(data)
-		print(len(data))
-		sortedData = data[-40:]
-		if(">>>" in sortedData):
-			print("OK")
-			self.successCommand = True
+	def start(self):
+		"""Démarre le processus"""
+		
+		self.generateGCode()
+		
+		self.allCommands = self.strGCode.split("\n")  #Creation des commandes
+		self.lbl_status.setText("Cycle en cours")
+		self.pb_start.setEnabled(False)
+		self.pb_stop.setEnabled(True)
+		if(self.isStopped==True):
+			self.readingThread = ReadingData(1, "ReadingData Thread")
+			self.readingThread.initSerial(self.serial, self.allCommands)
+			self.readingThread.start()
+			self.serial.write("G91\n")
+		else:
+			self.readingThread.initSerial(self.serial, self.allCommands)
+			self.readingThread.start()
+			self.pb_stop.setEnabled(True)
+
+			self.serial.write("G91\n")
+		
+	def stop(self):
+		"""Stop proprement le processus"""
+		print("stop")
+		self.isStopped = self.readingThread.stop()
+		self.lbl_status.setText("Fin du cycle")
+		self.pb_start.setEnabled(True)
+		self.pb_stop.setEnabled(False)
+		self.strGCode = ""
+		self.pte_displayGCode.setPlainText("")
+		self.readingThread = None
+		self.tabWidget.setCurrentIndex(1)
 
 
 
 	def generateGCode(self):
+		"""Génération des instructions GCode"""
 
-
-		self.yWidth = int(self.ui.sb_y.value())
-		self.xWidth = int(self.ui.sb_x.value())
+		#Calcul des itérations
+		self.yWidth = int(self.sb_y.value())
+		self.xWidth = int(self.sb_x.value())
 
 		self.yIter = floor(int(self.yWidth)/8)
 		self.xIter = floor(int(self.xWidth)/8)
 
 		nbBlocX = self.xIter/2
-		self.speed = self.ui.sb_speed
+		self.speed = self.sb_speed
 
+		gcode = "" 		#variable contenant tout le GCode
 		
+		#Retour Home
+		gcode += "G91\n"
+		gcode += "G28 X F4\n"
+		gcode += "G28 Y F4\n"
+		gcode += "G28 Z F4\n"
 
-		gcode = ""
 		for xBloc in range(0, int(nbBlocX)):
+
 			#Code bloc	
 			for xStep in range(0,int(self.yIter)):
-				gcode += "G01 Y"+str(self.ui.sb_step.value())+" F4"+"\n"
-				gcode += "G04 P0.1"+"\n"
+				gcode += "G01 Y"+str(self.sb_step.value())+" F"+str(self.sb_speed.value())+"\n"
+				for i in range(0, int(self.sb_passages.value())):
+					gcode += "G01 Z"+str(self.sb_axis_z.value())+" F"+str(self.sb_speed_z.value())+"\n"
+					gcode += "G28 Z"+" F"+str(self.sb_speed_z.value())+"\n"
 	
-			gcode += "G01 X"+str(self.ui.sb_step.value())+" F"+str(self.ui.sb_speed.value())+"\n"
+			gcode += "G01 X"+str(self.sb_step.value())+" F"+str(self.sb_speed.value())+"\n"
+			for i in range(0, int(self.sb_passages.value())):
+				gcode += "G01 Z"+str(self.sb_axis_z.value())+" F"+str(self.sb_speed_z.value())+"\n"
+				gcode += "G28 Z"+" F"+str(self.sb_speed_z.value())+"\n"
 	
 			for xStep in range(0,int(self.yIter)):
-				gcode += "G01 Y-"+str(self.ui.sb_step.value())+" F4"+"\n"
-				gcode += "G04 P0.1"+"\n"
+				gcode += "G01 Y-"+str(self.sb_step.value())+" F"+str(self.sb_speed.value())+"\n"
+				for i in range(0, int(self.sb_passages.value())):
+					gcode += "G01 Z"+str(self.sb_axis_z.value())+" F"+str(self.sb_speed_z.value())+"\n"
+					gcode += "G28 Z"+" F"+str(self.sb_speed_z.value())+"\n"
 	
-			gcode += "G01 X"+str(self.ui.sb_step.value())+" F"+str(self.ui.sb_speed.value())+"\n"
-	
+			gcode += "G01 X"+str(self.sb_step.value())+" F"+str(self.sb_speed.value())+"\n"
+			for i in range(0, int(self.sb_passages.value())):
+				gcode += "G01 Z"+str(self.sb_axis_z.value())+" F"+str(self.sb_speed_z.value())+"\n"
+				gcode += "G28 Z"+" F"+str(self.sb_speed_z.value())+"\n"
 
 		self.strGCode = gcode
-		self.ui.pte_displayGCode.appendPlainText(self.strGCode)
-		self.ui.lbl_status.setText("GCode généré")
-		self.ui.pb_start.setEnabled(True)
-
-	def start(self):
-
-		self.allCommands = self.strGCode.split("\n")
-		self.ui.lbl_status.setText("En cours")
-		self.sendCommand("G91")
-		self.sendCommand("G28 X")
-		#self.serial.write(bytes("G91"+'\n'+"G28 X", encoding='utf-8'))
-		time.sleep(1)
-
-		#self.sendCommand("G28 X")
-		#self.serial.write(bytes("G91"+'\n', encoding='utf-8'))
-		#self.sendCommand("G28 Y")
-
-		# for line in range (0,len(self.allCommands)):
-		# 	#print(self.allCommands[line])
-		# 	print(line)
-		# 	while(self.successCommand==False):
-		# 		continue
-		# 		print("waiting")
-		# 	#print("OK command")
-		# 	#time.sleep(2)
-		# 	#print("OK command")
-		# 	self.sendCommand(self.allCommands[line])
-
-			# time.sleep(0.01)
-			# self.ui.pb_progressBar.setValue(int(line/len(self.allCommands)*100))
-			# self.ui.pte_gcodeReturn.appendPlainText(">>> "+self.allCommands[line])
-			# time.sleep(0.005)
-			# self.ui.pte_gcodeReturn.appendPlainText(">>> OK")
-
-
-
-		# self.ui.pb_progressBar.setValue(100)
-		# self.ui.lbl_status.setText("Terminé")
-		# print("Mode relatif")
-		# self.sendCommand("G91") #Mode relatif
-		# #Retour Home
-		# print("Retour origine")
-		# self.sendCommand("G28 X")
-		# self.sendCommand("G28 Y")
+		self.pte_displayGCode.appendPlainText(self.strGCode)
 
 	def clear(self):
 

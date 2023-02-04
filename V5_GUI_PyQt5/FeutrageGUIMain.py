@@ -10,6 +10,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import * 
 from PyQt5.QtWidgets import * 
 
+from PyQt5.QtCore import QTimer,QDateTime
+
 import serial 	#Liaison série
 
 from PyQt5.QtCore import QIODevice
@@ -31,8 +33,7 @@ class MainWindow(QtWidgets.QMainWindow):
 		self.ui = Ui_MainWindow()
 		self.ui.setupUi(self)
 
-		#fonction de lecture
-		#self.callbackReading = self.readData	
+		#Reading function
 		self.port = "/dev/ttyACM0"
 		self.baudrate = 115200
 
@@ -43,22 +44,91 @@ class MainWindow(QtWidgets.QMainWindow):
 		self.isStopped = False
   
 		self.readingThread = ReadingData(1, "ReadingData Thread")
-		#Signaux et slots
+		self.readingThread.addProgressBar(self.ui.pb_progressBar)
+  
+		self.statusBar().showMessage("Déconnecté")
+		#Signals & slots
 		self.ui.pb_resfreshPorts.clicked.connect(self.refreshPort)
 		self.ui.pb_openPort.clicked.connect(self.openPort)
 		self.ui.pb_closePort.clicked.connect(self.closePort)
-		self.ui.pb_generateGCode.clicked.connect(self.generateGCode)
+		self.ui.pb_settings.clicked.connect(self.generateGCode)
 		self.ui.pb_start.clicked.connect(self.start)
 		self.ui.pb_clear.clicked.connect(self.clear)
+		self.ui.pb_stop.clicked.connect(self.stopButton)
 
-		#Affiche les ports disponibles
+		#Display available ports
 		for port in QSerialPortInfo.availablePorts():
 			self.ui.cb_ports.addItem("/dev/"+port.portName())
 
-		#Déclarations internes
-		self.serial=None # déclaration initiale
+		self.serial=None #Serial object
 		self.successCommand = True
+  
+		#Timer to check end of ps
+		self.timer=QTimer()
+		self.timer.timeout.connect(self.endHandler)
+		self.timer.start(500)
 
+	def endHandler(self):
+		if(self.readingThread!=None):
+			if(self.readingThread.cycleIsOver==True):
+				self.statusBar().showMessage("Cycle terminé")
+    
+				self.ui.pb_stop.setDisabled(True)
+				self.ui.sb_passages.setEnabled(True)
+				self.ui.sb_y.setEnabled(True)
+				self.ui.sb_x.setEnabled(True)
+				self.ui.sb_step.setEnabled(True)
+				self.ui.sb_axis_z.setEnabled(True)
+				self.ui.sb_passages.setEnabled(True)
+				self.ui.sb_speed.setEnabled(True)
+    
+				self.ui.pb_settings.setEnabled(True)
+				self.ui.pb_start.setEnabled(False)
+				self.ui.pb_start.setStyleSheet("background-color:green;")
+				self.ui.pb_start.setText("Lancer le cycle")
+    
+				#reset all var
+				self.stop()
+				self.readingThread.reset()
+				time.sleep(0.2)
+				self.readingThread = ReadingData(1, "ReadingData Thread")
+				self.readingThread.addProgressBar(self.ui.pb_progressBar)
+				self.allCommands = str("G91 \n").split("\n") 
+				self.readingThread.initSerial(self.serial, self.allCommands)
+				self.ui.pb_start.clicked.connect(self.start)
+				self.ui.pb_start.clicked.disconnect(self.resume)
+  
+	def stopButton(self):
+     
+		if(self.readingThread!=None):
+			if(self.readingThread.cycleIsOver==False):
+				self.statusBar().showMessage("Cycle arrêté par l'utilisateur")
+    
+				self.ui.pb_stop.setDisabled(True)
+				self.ui.sb_passages.setEnabled(True)
+				self.ui.sb_y.setEnabled(True)
+				self.ui.sb_x.setEnabled(True)
+				self.ui.sb_step.setEnabled(True)
+				self.ui.sb_axis_z.setEnabled(True)
+				self.ui.sb_passages.setEnabled(True)
+				self.ui.sb_speed.setEnabled(True)
+    
+				self.ui.pb_settings.setEnabled(True)
+				self.ui.pb_start.setEnabled(False)
+				self.ui.pb_start.setStyleSheet("background-color:green;")
+				self.ui.pb_start.setText("Lancer le cycle")
+    
+				#reset all var
+				self.stop()
+				self.readingThread.reset()
+				time.sleep(0.2)
+				self.readingThread = ReadingData(1, "ReadingData Thread")
+				self.readingThread.addProgressBar(self.ui.pb_progressBar)
+				self.allCommands = str("G91 \n").split("\n") 
+				self.readingThread.initSerial(self.serial, self.allCommands)
+				self.ui.pb_start.clicked.connect(self.start)
+				self.ui.pb_start.clicked.disconnect(self.resume)
+    
 	def refreshPort(self):
 
 		self.ui.cb_ports.clear()
@@ -66,62 +136,92 @@ class MainWindow(QtWidgets.QMainWindow):
 			self.ui.cb_ports.addItem("/dev/"+port.portName())
 
 	def openPort(self): 
-		"""Initialisation du port Série"""
-
-		print("Initialisation du port série")
+		"""Opening Serial port"""
 		self.serial = serial.Serial(str(self.ui.cb_ports.currentText()), self.baudrate,serial.EIGHTBITS, serial.PARITY_NONE, serial.STOPBITS_ONE, timeout=0.1)
-		self.ui.lbl_status.setText("Connecte")
-		self.ui.pb_start.setEnabled(True)
+		self.statusBar().showMessage("Connecté, en attente de validation des paramètres")
+		self.ui.pb_settings.setEnabled(True)
+		self.ui.pb_closePort.setEnabled(True)
+		self.ui.pb_openPort.setEnabled(False)
 
-	def closePort(self): #Initialisation du port Série
-		"""Fermeture du port série"""
-
+	def closePort(self): 
+		"""Closing serial port"""
 		self.serial.close()
-		print("Déconnnexion")
 		self.statusBar().showMessage("Déconnecté")
 		
 	def start(self):
-		"""Démarre le processus"""
+		"""Start processus"""
 		
-		self.generateGCode()
-		print("Starting GCODE")
-		self.allCommands = self.strGCode.split("\n")  #Creation des commandes
-		self.ui.lbl_status.setText("Cycle en cours")
-		self.ui.pb_start.setEnabled(False)
+		#Avoid change settings
+		self.ui.sb_passages.setEnabled(False)
+		self.ui.sb_y.setEnabled(False)
+		self.ui.sb_x.setEnabled(False)
+		self.ui.sb_step.setEnabled(False)
+		self.ui.sb_axis_z.setEnabled(False)
+		self.ui.sb_passages.setEnabled(False)
+		self.ui.sb_speed.setEnabled(False)
+  
+
+  
+		self.allCommands = self.strGCode.split("\n")  
+		self.statusBar().showMessage("Cycle en cours...")
+		self.ui.pb_settings.setEnabled(False)
 		self.ui.pb_stop.setEnabled(True)
-		if(self.isStopped==True):
-			self.readingThread = ReadingData(1, "ReadingData Thread")
+
+		if(self.readingThread==None):	
+			print("Restart with command "+str(self.savedIndexCommand))
+			self.readingThread = ReadingData(1, "ReadingData Thread", self.savedIndexCommand)
 			self.readingThread.initSerial(self.serial, self.allCommands)
+			self.readingThread.addProgressBar(self.ui.pb_progressBar)
 			self.readingThread.start()
-			self.serial.write(b"G91\n")
+			time.sleep(0.1)
+   
 		else:
 			self.readingThread.initSerial(self.serial, self.allCommands)
+			self.readingThread.addProgressBar(self.ui.pb_progressBar)
 			self.readingThread.start()
 			self.ui.pb_stop.setEnabled(True)
-
-			#self.serial.write(b"G91\n")
-			time.sleep(0.5)
+			time.sleep(0.1)
 			self.readingThread.sendCommand("G91\n")
-
+   
+		self.ui.pb_start.setEnabled(True)
+		self.ui.pb_start.clicked.disconnect(self.start)
+		self.ui.pb_start.clicked.connect(self.resume)
+		self.ui.pb_start.setText("Mettre en pause")
+		self.ui.pb_start.setStyleSheet("background-color:blue;")
+  
+	def resume(self):
 		
-	def stop(self):
-		"""Stop proprement le processus"""
-		print("stop")
-		self.isStopped = self.readingThread.stop()
-		self.lbl_status.setText("Fin du cycle")
-		self.pb_start.setEnabled(True)
-		self.pb_stop.setEnabled(False)
-		self.strGCode = ""
-		self.pte_displayGCode.setPlainText("")
+		self.statusBar().showMessage("Cycle en pause")
+		self.ui.sb_speed.setEnabled(True)
+		self.ui.pb_settings.setEnabled(True)
+		self.readingThread.stop()
+		self.readingThread.isRunning = False
+		self.readingThread.isWorking = False
+		self.savedIndexCommand = self.readingThread.currentIndexCommand
+		self.ui.pb_start.clicked.disconnect(self.resume)
+		self.ui.pb_start.clicked.connect(self.start)
+		self.ui.pb_start.setStyleSheet("background-color:green;")
+		self.ui.pb_start.setText("Relancer le cycle")
 		self.readingThread = None
-		self.tabWidget.setCurrentIndex(1)
+		
+  
+	def stop(self):
+		"""Stop processus"""
+
+		self.isStopped = self.readingThread.stop()
+		#self.ui.pb_start.setEnabled(True)
+		self.ui.pb_stop.setEnabled(False)
+		self.strGCode = ""
+		self.ui.pte_displayGCode.setPlainText("")
+		
 
 
 
 	def generateGCode(self):
-		"""Génération des instructions GCode"""
+		"""GCode generator"""
 
-		#Calcul des itérations
+		self.ui.pb_start.setEnabled(True)
+		#Computing
 		self.yWidth = int(self.ui.sb_y.value())
 		self.xWidth = int(self.ui.sb_x.value())
 
@@ -129,15 +229,15 @@ class MainWindow(QtWidgets.QMainWindow):
 		self.xIter = floor(int(self.xWidth)/8)
 
 		nbBlocX = self.xIter/2
-		self.speed = self.ui.sb_speed
+		self.speed = self.ui.sb_speed.value()
 
-		gcode = "" 		#variable contenant tout le GCode
+		gcode = "" 		#All GCode values
 		
-		#Retour Home
+		#Home
 		gcode += "G91\n"
-		gcode += "G28 X F4\n"
-		gcode += "G28 Y F4\n"
-		gcode += "G28 Z F4\n"
+		gcode += "G28 X F"+str(self.ui.sb_speed.value())+"\n"
+		gcode += "G28 Y F"+str(self.ui.sb_speed.value())+"\n"
+		gcode += "G28 Z F"+str(self.ui.sb_speed.value())+"\n"
 
 		for xBloc in range(0, int(nbBlocX)):
 
@@ -165,7 +265,10 @@ class MainWindow(QtWidgets.QMainWindow):
 				gcode += "G28 Z"+" F"+str(self.ui.sb_speed.value())+"\n"
 
 		self.strGCode = gcode
+		self.ui.pte_displayGCode.clear()
 		self.ui.pte_displayGCode.appendPlainText(self.strGCode)
+		self.statusBar().showMessage("Paramètres validés")
+  
 
 	def clear(self):
 

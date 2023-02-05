@@ -1,0 +1,10 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+	<qresource prefix="icon">
+		<file alias="cycle.png">img/cycle.png</file>
+		<file alias="gear.png">img/gear.png</file>
+		<file alias="logo.ico">img/logo.ico</file>
+		<file alias="pause.png">img/pause.png</file>
+		<file alias="run.png">img/run.png</file>
+	</qresource>
+</RCC>

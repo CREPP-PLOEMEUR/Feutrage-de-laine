@@ -2,18 +2,15 @@
 
 Un projet pour une machine à feutrer la laine
 
-## Installations Outils Python 2.7
+## Installations Outils Python3.10
 
-Le code a été exécuté sur une machine Ubuntu 18.04 car la communication série entre la CNC et l'ordinateur n'était pas fonctionnelle en version 3.X de Python,
-que ce soit avec la bibliothèque QtSerial ou PySerial sous version 3.X. 
-
-La version 2.X de Python permet la communication avec la bibliothèque Pyserial.
+Le code est exécuté avec Python3 et les bibliothèques PyQt5
 
 ```
 sudo apt install python-pip
-sudo apt-get install python-qt4
+sudo apt-get install python-qt5
 sudo apt-get install pyqt4-dev-tools 
-pip install serial
+pip install pyserial
 sudo apt-get install qt4-designer
 ```
 
@@ -31,5 +28,5 @@ Le dossier V4_GUI_PyQt4 contient le code source pour l'Interface PyQt4
 ## Lancement de l'interface
 
 ```
-python GUIMain.py
+python3 GUIMain.py
 ```

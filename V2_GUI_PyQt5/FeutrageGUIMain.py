@@ -261,7 +261,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 	def generateGCode(self):
 		"""GCode generator"""
-
+		speed_z = 6
 		self.ui.pb_start.setEnabled(True)
 		#Computing
 		self.yWidth = int(self.ui.sb_y.value())
@@ -281,8 +281,8 @@ class MainWindow(QtWidgets.QMainWindow):
 		gcode += "G28 X F"+str(self.ui.sb_speed.value())+"\n"
 		gcode += "G28 Y F"+str(self.ui.sb_speed.value())+"\n"
 		for i in range(0, int(self.ui.sb_passages.value())):
-			gcode += "G01 Z"+str(self.ui.sb_axis_z.value())+" F"+str(self.ui.sb_speed.value())+"\n"
-			gcode += "G28 Z"+" F"+str(self.ui.sb_speed.value())+"\n"
+			gcode += "G01 Z"+str(2)+" F"+str(speed_z)+"\n"
+			gcode += "G28 Z"+" F"+str(speed_z)+"\n"
    
 		for xBloc in range(0, int(nbBlocX)):
 
@@ -291,29 +291,29 @@ class MainWindow(QtWidgets.QMainWindow):
 				gcode += "G01 Y"+str(self.ui.sb_step.value())+" F"+str(self.ui.sb_speed.value())+"\n"
 				#gcode += "#1=1\n"
 				for i in range(0, int(self.ui.sb_passages.value())):
-					gcode += "G01 Z"+str(self.ui.sb_axis_z.value())+" F"+str(self.ui.sb_speed.value())+"\n"
-					gcode += "G28 Z"+" F"+str(self.ui.sb_speed.value())+"\n"
+					gcode += "G01 Z"+str(2)+" F"+str(speed_z)+"\n"
+					gcode += "G28 Z"+" F"+str(speed_z)+"\n"
 				
     
-			gcode += "G01 X"+str(self.ui.sb_step.value())+" F"+str(self.ui.sb_speed.value())+"\n"
+			gcode += "G01 X"+str(self.ui.sb_step.value())+" F"+str(4)+"\n"
 			#gcode += "#1=1\n"
 			for i in range(0, int(self.ui.sb_passages.value())):
-				gcode += "G01 Z"+str(self.ui.sb_axis_z.value())+" F"+str(self.ui.sb_speed.value())+"\n"
-				gcode += "G28 Z"+" F"+str(self.ui.sb_speed.value())+"\n"
+				gcode += "G01 Z"+str(2)+" F"+str(speed_z)+"\n"
+				gcode += "G28 Z"+" F"+str(speed_z)+"\n"
 			
 	
 			for xStep in range(0,int(self.yIter)):
 				gcode += "G01 Y-"+str(self.ui.sb_step.value())+" F"+str(self.ui.sb_speed.value())+"\n"
 				#gcode += "#1=1\n"
 				for i in range(0, int(self.ui.sb_passages.value())):
-					gcode += "G01 Z"+str(self.ui.sb_axis_z.value())+" F"+str(self.ui.sb_speed.value())+"\n"
-					gcode += "G28 Z"+" F"+str(self.ui.sb_speed.value())+"\n"
+					gcode += "G01 Z"+str(2)+" F"+str(speed_z)+"\n"
+					gcode += "G28 Z"+" F"+str(speed_z)+"\n"
     
-			gcode += "G01 X"+str(self.ui.sb_step.value())+" F"+str(self.ui.sb_speed.value())+"\n"
+			gcode += "G01 X"+str(self.ui.sb_step.value())+" F"+str(4)+"\n"
 			#gcode += "#1=1\n"
 			for i in range(0, int(self.ui.sb_passages.value())):
-				gcode += "G01 Z"+str(self.ui.sb_axis_z.value())+" F"+str(self.ui.sb_speed.value())+"\n"
-				gcode += "G28 Z"+" F"+str(self.ui.sb_speed.value())+"\n"
+				gcode += "G01 Z"+str(2)+" F"+str(speed_z)+"\n"
+				gcode += "G28 Z"+" F"+str(speed_z)+"\n"
 
 		self.strGCode = gcode
 		self.ui.pte_displayGCode.clear()

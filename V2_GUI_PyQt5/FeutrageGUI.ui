@@ -247,7 +247,7 @@
      <x>0</x>
      <y>0</y>
      <width>1050</width>
-     <height>22</height>
+     <height>19</height>
     </rect>
    </property>
   </widget>
@@ -699,10 +699,10 @@
         <number>3</number>
        </property>
        <property name="maximum">
-        <number>7</number>
+        <number>9</number>
        </property>
        <property name="value">
-        <number>5</number>
+        <number>7</number>
        </property>
       </widget>
      </item>

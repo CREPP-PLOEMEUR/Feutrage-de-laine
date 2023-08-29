@@ -2,6 +2,8 @@
 
 Un projet pour une machine à feutrer la laine
 
+![Machine](Images/1.jpg)
+
 ## Installations Outils Python3.10
 
 Le code est exécuté avec Python3 et les bibliothèques PyQt5

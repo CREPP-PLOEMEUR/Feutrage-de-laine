@@ -1,6 +1,12 @@
+<!--# Feutrage de laine -->
+<!--$ Python-->
+<!--$ Freecad-->
+<!--% Un projet pour une machine à feutrer la laine, activité fastidieuse et dangereuse -->
+
 # Feutrage-de-laine
 
-Un projet pour une machine à feutrer la laine
+
+Un projet pour une machine à feutrer la laine, activité fastidieuse et dangereuse
 
 ![Machine](Images/1.jpg)
 
